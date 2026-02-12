@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --brand: #1f7aed;
+    --brand-dark: #145bb3;
+    --bg: #0b1021;
+    --card: #0f162b;
+    --muted: #97a4c0;
+  }
+
+  body {
+    @apply font-sans antialiased;
+  }
+}
+
+@layer components {
+  .page {
+    @apply max-w-6xl mx-auto px-5 py-16;
+  }
+
+  .hero {
+    @apply bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/10 rounded-2xl p-7 grid grid-cols-1 lg:grid-cols-3/2 gap-6 items-center shadow-2xl;
+  }
+
+  .hero h1 {
+    @apply text-4xl font-bold mb-3 text-white;
+  }
+
+  .hero p {
+    @apply text-gray-400 mb-4;
+  }
+
+  .hero-img {
+    @apply w-full rounded-2xl border border-white/10 shadow-2xl;
+  }
+
+  .badge {
+    @apply inline-block px-3 py-1.5 rounded-full bg-blue-500/15 text-blue-200 font-bold text-xs border border-blue-500/35;
+  }
+
+  .card {
+    @apply bg-white/5 border border-white/10 rounded-xl p-4 shadow-xl;
+  }
+
+  .card h3 {
+    @apply text-lg font-bold mb-2 text-white;
+  }
+
+  .muted {
+    @apply text-gray-400;
+  }
+
+  .grid-2 {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-4;
+  }
+
+  form {
+    @apply flex flex-col gap-2.5;
+  }
+
+  input, select, textarea {
+    @apply rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition;
+  }
+
+  input::placeholder, select::placeholder, textarea::placeholder {
+    @apply text-gray-500;
+  }
+
+  button {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .payment-grid {
+    @apply grid gap-3 grid-cols-1 sm:grid-cols-2;
+  }
+
+  .payment-grid > div {
+    @apply bg-white/5 rounded-lg p-3;
+  }
+
+  .payment-grid > div > .muted {
+    @apply text-xs uppercase tracking-wide mb-1;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-sm;
+  }
+
+  .status-SUCCESS {
+    @apply bg-green-500/20 text-green-300;
+  }
+
+  .status-PENDING {
+    @apply bg-yellow-500/20 text-yellow-300;
+  }
+
+  .status-FAILED {
+    @apply bg-red-500/20 text-red-300;
+  }
+
+  .status-INITIATED {
+    @apply bg-blue-500/20 text-blue-300;
+  }
+
+  .success {
+    @apply text-green-400 text-sm font-medium;
+  }
+
+  .error {
+    @apply bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-300 text-sm font-medium;
+  }
+
+  .flex-row {
+    @apply flex gap-2;
+  }
+
+  .section-title {
+    @apply text-2xl font-bold text-white mt-8 mb-4;
+  }
+}
+
+/* Preserve original dark theme status styles for compatibility */
+.flex {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Blob animation */
+@keyframes blob {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+

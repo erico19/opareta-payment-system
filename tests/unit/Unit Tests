@@ -1,0 +1,39 @@
+
+### **Run Tests:**
+
+#### **Unit Tests:**
+```bash
+# Run auth service unit tests
+docker-compose exec auth-service npm test
+
+# Run payment service unit tests
+docker-compose exec payment-service npm test
+
+# Run with coverage
+docker-compose exec auth-service npm run test:cov
+docker-compose exec payment-service npm run test:cov
+
+
+
+
+## 🚀 **Create a Test Runner Script:**
+
+```bash
+cat > run-tests.sh << 'EOF'
+#!/bin/bash
+echo "🚀 Running Opareta Payment System Tests"
+echo "========================================"
+
+echo -e "\n🔐 Auth Service Tests:"
+docker-compose exec auth-service npm test -- --coverage --testNamePattern="Auth"
+
+echo -e "\n💳 Payment Service Tests:"
+docker-compose exec payment-service npm test -- --coverage --testNamePattern="Payment"
+
+echo -e "\n📊 Integration Tests:"
+# Add your integration test commands here
+
+echo -e "\n✅ All tests completed!"
+EOF
+
+chmod +x run-tests.sh

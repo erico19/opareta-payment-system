@@ -1,0 +1,432 @@
+---
+- name: Provision Opareta Payment System Infrastructure
+  hosts: opareta_servers
+  become: yes
+  vars:
+    docker_version: "24.0.7"
+    docker_compose_version: "v2.23.0"
+    app_user: "opareta"
+    app_group: "opareta"
+    app_dir: "/opt/opareta"
+    timezone: "Africa/Kampala"
+    
+    # SSL Configuration
+    ssl_country: "UG"
+    ssl_state: "Kampala"
+    ssl_locality: "Kampala"
+    ssl_organization: "Opareta"
+    ssl_common_name: "opareta.com"
+    
+    # Service ports
+    auth_port: "3001"
+    payment_port: "3002"
+    nginx_port: "80"
+    nginx_ssl_port: "443"
+    
+    # Database configuration
+    postgres_version: "15"
+    
+  tasks:
+    # Task 1: System Updates and Basic Packages
+    - name: Update apt cache and upgrade packages
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        upgrade: dist
+        autoremove: yes
+    
+    - name: Install essential packages
+      apt:
+        name:
+          - curl
+          - wget
+          - gnupg
+          - lsb-release
+          - software-properties-common
+          - apt-transport-https
+          - ca-certificates
+          - git
+          - jq
+          - htop
+          - net-tools
+          - zip
+          - unzip
+          - tree
+          - vim
+          - ufw
+          - fail2ban
+          - logrotate
+          - ntp
+        state: present
+    
+    # Task 2: Configure Timezone and NTP
+    - name: Set timezone
+      timezone:
+        name: "{{ timezone }}"
+    
+    - name: Ensure NTP is running
+      systemd:
+        name: ntp
+        enabled: yes
+        state: started
+    
+    # Task 3: Create Application User and Directory
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        shell: /bin/bash
+        create_home: yes
+        home: "/home/{{ app_user }}"
+        system: no
+    
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+    
+    - name: Create log directory
+      file:
+        path: "/var/log/opareta"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+    
+    # Task 4: Install Docker
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+    
+    - name: Install Docker packages
+      apt:
+        name:
+          - "docker-ce={{ docker_version }}"
+          - "docker-ce-cli={{ docker_version }}"
+          - "containerd.io"
+          - "docker-buildx-plugin"
+          - "docker-compose-plugin"
+        state: present
+        update_cache: yes
+    
+    - name: Install Docker Compose standalone
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+    
+    - name: Add user to docker group
+      user:
+        name: "{{ app_user }}"
+        groups: docker
+        append: yes
+    
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+    
+    # Task 5: Security Hardening
+    - name: Configure UFW firewall
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "22"   # SSH
+        - "80"   # HTTP
+        - "443"  # HTTPS
+        - "3000" # Grafana
+        - "9090" # Prometheus
+    
+    - name: Deny all other incoming traffic
+      ufw:
+        direction: incoming
+        policy: deny
+        state: enabled
+    
+    - name: Allow all outgoing traffic
+      ufw:
+        direction: outgoing
+        policy: allow
+    
+    - name: Configure SSH hardening
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+        - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+        - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+        - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+        - { regexp: '^#?LoginGraceTime', line: 'LoginGraceTime 60' }
+      notify: Restart SSH service
+    
+    - name: Copy SSH authorized keys for app user
+      authorized_key:
+        user: "{{ app_user }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+    
+    - name: Configure fail2ban
+      copy:
+        src: files/fail2ban/jail.local
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: Start fail2ban service
+      systemd:
+        name: fail2ban
+        enabled: yes
+        state: started
+    
+    # Task 6: Install and Configure Nginx
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+    
+    - name: Configure Nginx sites
+      copy:
+        src: "files/nginx/{{ item }}"
+        dest: "/etc/nginx/{{ item }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - nginx.conf
+        - sites-available/opareta.conf
+    
+    - name: Create SSL certificate directory
+      file:
+        path: /etc/nginx/ssl
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    
+    - name: Generate self-signed SSL certificate
+      shell: |
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout /etc/nginx/ssl/opareta.key \
+          -out /etc/nginx/ssl/opareta.crt \
+          -subj "/C={{ ssl_country }}/ST={{ ssl_state }}/L={{ ssl_locality }}/O={{ ssl_organization }}/CN={{ ssl_common_name }}"
+      args:
+        creates: /etc/nginx/ssl/opareta.crt
+    
+    - name: Enable Nginx site
+      file:
+        src: "/etc/nginx/sites-available/opareta.conf"
+        dest: "/etc/nginx/sites-enabled/opareta.conf"
+        state: link
+    
+    - name: Remove default Nginx site
+      file:
+        path: "/etc/nginx/sites-enabled/default"
+        state: absent
+    
+    - name: Start Nginx service
+      systemd:
+        name: nginx
+        enabled: yes
+        state: restarted
+    
+    # Task 7: Install Monitoring Stack
+    - name: Create monitoring directory
+      file:
+        path: "{{ app_dir }}/monitoring"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+    
+    - name: Copy monitoring configuration
+      copy:
+        src: "files/monitoring/"
+        dest: "{{ app_dir }}/monitoring/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+    
+    - name: Create Prometheus data directory
+      file:
+        path: "{{ app_dir }}/monitoring/prometheus_data"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+    
+    - name: Create Grafana data directory
+      file:
+        path: "{{ app_dir }}/monitoring/grafana_data"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+    
+    # Task 8: Install Node Exporter
+    - name: Download Node Exporter
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz"
+        dest: "/tmp/node_exporter.tar.gz"
+    
+    - name: Extract Node Exporter
+      unarchive:
+        src: "/tmp/node_exporter.tar.gz"
+        dest: "/tmp"
+        remote_src: yes
+    
+    - name: Install Node Exporter binary
+      copy:
+        src: "/tmp/node_exporter-1.6.1.linux-amd64/node_exporter"
+        dest: "/usr/local/bin/node_exporter"
+        owner: root
+        group: root
+        mode: '0755'
+        remote_src: yes
+    
+    - name: Create Node Exporter service
+      copy:
+        src: files/systemd/node-exporter.service
+        dest: /etc/systemd/system/node-exporter.service
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: Start Node Exporter service
+      systemd:
+        name: node-exporter
+        enabled: yes
+        state: started
+    
+    # Task 9: Configure Log Rotation
+    - name: Configure application log rotation
+      copy:
+        src: files/logrotate/opareta
+        dest: /etc/logrotate.d/opareta
+        owner: root
+        group: root
+        mode: '0644'
+    
+    # Task 10: Setup Backup Scripts
+    - name: Copy backup scripts
+      copy:
+        src: "files/scripts/"
+        dest: "{{ app_dir }}/scripts/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+    
+    - name: Configure backup cron job
+      cron:
+        name: "Database Backup"
+        minute: "0"
+        hour: "2"
+        job: "{{ app_dir }}/scripts/backup.sh >> /var/log/opareta/backup.log 2>&1"
+        user: "{{ app_user }}"
+    
+    - name: Create backup directory
+      file:
+        path: "{{ app_dir }}/backups"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+    
+    # Task 11: Setup Systemd Services
+    - name: Create Opareta systemd service
+      template:
+        src: templates/opareta.service.j2
+        dest: /etc/systemd/system/opareta.service
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+    
+    # Task 12: Deploy Application
+    - name: Clone application repository
+      git:
+        repo: "{{ git_repository }}"
+        dest: "{{ app_dir }}/app"
+        version: "{{ git_branch }}"
+        force: yes
+    
+    - name: Copy environment files
+      copy:
+        src: "files/env/.env.production"
+        dest: "{{ app_dir }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0640'
+    
+    - name: Set directory permissions
+      file:
+        path: "{{ app_dir }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        recurse: yes
+        mode: '0755'
+    
+    - name: Start Opareta services
+      systemd:
+        name: opareta
+        enabled: yes
+        state: started
+    
+    # Task 13: Verify Installation
+    - name: Wait for services to start
+      wait_for:
+        port: "{{ item }}"
+        timeout: 60
+      loop:
+        - "80"
+        - "443"
+        - "3000"
+        - "9090"
+    
+    - name: Test service health
+      uri:
+        url: "https://localhost/health"
+        method: GET
+        validate_certs: no
+        status_code: 200
+      register: health_result
+    
+    - name: Display health check result
+      debug:
+        msg: "Health check {{ 'passed' if health_result.status == 200 else 'failed' }}"
+    
+  handlers:
+    - name: Restart SSH service
+      systemd:
+        name: sshd
+        state: restarted
+    
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+    
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted

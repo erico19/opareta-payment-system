@@ -1,0 +1,30 @@
+*.log
+node_modules/
+.env
+.nyc_output/
+coverage/
+.DS_Store
+Thumbs.db
+backups/*.sql
+data/*
+.env
+
+# Backup files
+backups/
+*.dump
+*.7z
+*.tar.gz
+*.bak
+backup.log
+restore.log
+
+# Database files
+*.sql
+*.db
+*.sqlite
+
+# Environment files (except examples)
+.env
+.env.local
+.env.development
+.env.production
