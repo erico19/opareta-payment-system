@@ -1,9 +1,11 @@
 # Opareta Payment System
 
-A microservices-based payment processing system built with NestJS, Docker, PostgreSQL, Redis, and Nginx.
+A practical, microservices-based payment processing system built with NestJS, Docker, PostgreSQL, Redis, and Nginx. It demonstrates how authentication and payment services can work together securely in a production-like environment.
 
 ## Table of Contents
 
+- [About the Project](#about-the-project)
+- [What You Will Learn](#what-you-will-learn)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
@@ -16,6 +18,44 @@ A microservices-based payment processing system built with NestJS, Docker, Postg
 - [Backup and Restore](#backup-and-restore)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
+- [Support](#support)
+
+## About the Project
+
+Opareta Payment System is a learning-focused implementation of a real-world payment platform. It shows how to separate authentication, payment processing, data storage, caching, API routing, and monitoring into independent services.
+
+The project is useful for understanding how payments move through controlled states, how a simulated provider communicates with the application, and how security rules protect user accounts and payment operations. It is designed as an educational backend project, so learners can experiment locally before applying the concepts to larger production systems.
+
+### What the project demonstrates
+
+- Building REST APIs with NestJS
+- Protecting endpoints with JWT authentication
+- Designing service-to-service communication
+- Managing payment lifecycle and state transitions
+- Recording audit trails for financial operations
+- Using separate databases for independent services
+- Running a complete system with Docker Compose
+- Routing traffic through Nginx
+- Collecting metrics with Prometheus and Grafana
+- Performing database backups and restores
+
+## What You Will Learn
+
+By working through this project, you will learn:
+
+- How to structure a NestJS application using modules, controllers, and services
+- How authentication works, including registration, login, password validation, and JWT verification
+- How to protect private API endpoints and handle unauthorized requests
+- How to design payment workflows with states such as `INITIATED`, `PENDING`, `SUCCESS`, and `FAILED`
+- Why invalid state transitions must be blocked
+- How webhook or provider responses can update transaction status
+- How audit logs provide traceability for payment changes
+- How Redis can support caching and session-related functionality
+- How PostgreSQL is used to persist users and payment records
+- How to run, inspect, and debug multiple services with Docker Compose
+- How Nginx acts as an API gateway
+- How Prometheus collects metrics and Grafana presents them
+- How to test APIs, database operations, backups, and failure scenarios
 
 ## Features
 
