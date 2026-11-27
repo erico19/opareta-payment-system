@@ -1,153 +1,174 @@
+# Opareta Payment System
 
-  # Opareta Payment System
+A microservices-based payment processing system built with NestJS, Docker, PostgreSQL, Redis, and Nginx.
 
-A complete payment processing system with authentication and payment services, built with NestJS, Docker, and PostgreSQL.
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [API Documentation](#api-documentation)
+- [API Testing](#api-testing)
+- [Database Operations](#database-operations)
+- [Monitoring](#monitoring)
+- [Development and Testing](#development-and-testing)
+- [Backup and Restore](#backup-and-restore)
+- [Security](#security)
+- [Troubleshooting](#troubleshooting)
+
+## Features
+
+### Authentication Service
+
+- User registration with phone number, email, and password
+- JWT token generation and validation
+- Strong password validation
+- Duplicate user prevention
+
+### Payment Service
+
+- Payment initiation with unique reference generation
+- State management: `INITIATED → PENDING → SUCCESS/FAILED`
+- Webhook and status update handling
+- Idempotency support
+- Audit logging for transaction changes
+- Simulated payment provider integration
+
+### Infrastructure
+
+- Dockerized microservices
+- Separate PostgreSQL databases
+- Redis caching and session management
+- Nginx API gateway
+- Prometheus and Grafana monitoring
 
 ## Architecture
 
-- **Auth Service**: User authentication and JWT token management
-- **Payment Service**: Payment processing with state management and webhook handling
-- **PostgreSQL**: Separate databases for each service
-- **Redis**: Caching and session management
-- **Nginx**: Reverse proxy with load balancing
-- **Prometheus & Grafana**: Monitoring and alerting
+```text
+┌──────────────┐       ┌──────────────┐       ┌───────────────┐
+│  Client App  │──────►│    Nginx     │──────►│ Auth Service  │
+│              │       │ Port: 8080   │       │  Port: 3001   │
+└──────────────┘       └──────┬───────┘       └───────┬───────┘
+                              │                       │
+                              └───────────┐           │
+                                          ▼           ▼
+                                  ┌───────────────┐  ┌──────────┐
+                                  │Payment Service│  │ Auth DB  │
+                                  │  Port: 3002   │  │PostgreSQL│
+                                  └───────┬───────┘  └──────────┘
+                                          │
+                                  ┌───────▼───────┐
+                                  │  Payment DB   │
+                                  │  PostgreSQL   │
+                                  └───────┬───────┘
+                                          │
+                                  ┌───────▼───────┐
+                                  │     Redis     │
+                                  └───────────────┘
+```
+
+## Prerequisites
+
+- Docker
+- Docker Compose
 
 ## Quick Start
 
-   🚀 **Opareta Payment System**
-A complete microservices-based payment processing system built with NestJS, Docker, and PostgreSQL.
+### 1. Clone the repository
 
-📋 **Table of Contents** 
-Features
-Architecture
-Quick Start
-API Documentation
-Testing
-Monitoring
-Development
-
-✨ **Features**
-
-🔐 **Authentication Service**
-User registration with phone, email, and password
-JWT token generation and validation
-Strong password validation
-Duplicate user prevention
-
-💳 **Payment Service**
-Payment initiation with unique reference generation
-Complete state management (INITIATED → PENDING → SUCCESS/FAILED)
-Webhook handling with idempotency
-Audit logging for all transactions
-Provider integration simulation
-
-🏗️ **Infrastructure**
--Dockerized microservices
--Separate PostgreSQL databases
--Redis caching and session management
--Nginx API gateway
--Prometheus + Grafana monitoring
-
-🏛️ **Architecture diagram**
-
-
-
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Client App    │ ── │  Nginx Gateway   │ ── │  Auth Service   │
-│                 │    │    (Port 8080)   │    │   (Port 3001)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                              │                       │
-                              │ ┌─────────────────┐   │
-                              └─│ Payment Service │   │
-                                │   (Port 3002)   │   │
-                                └─────────────────┘   │
-                                      │               │
-                ┌──────────────┐      │     ┌──────────────┐
-                │ Payment DB   │◄─────┘     │   Auth DB    │
-                │  (PostgreSQL)│            │  (PostgreSQL)│
-                └──────────────┘            └──────────────┘
-                                      │
-                                ┌─────────┐
-                                │  Redis  │
-                                └─────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-🚀 **Quick Start**
-
-Prerequisites
-Docker
-Docker Compose
-
-1. **Clone and Setup**
-bash
-git clone <repository-url>
+```bash
+git clone https://github.com/erico19/opareta-payment-system.git
 cd opareta-payment-system
-2. **Start All Services**
-bash
-docker-compose up -d --build
-3. **Verify Services**
-bash
-docker-compose ps
+```
 
-**Check Service Logs:**
-bash
-## View all services logs
-docker-compose logs
-docker-compose logs -f
-## View specific service logs
-docker-compose logs auth-service
-docker-compose logs payment-service
-docker-compose logs nginx
-## Follow logs in real-time
-docker-compose logs -f auth-service
-## Stop all services
-docker-compose down
-## Stop and remove volumes
-docker-compose down -v
+### 2. Start all services
 
-**All services should show as "Up":**
+```bash
+docker compose up -d --build
+```
 
-✅ auth-service (Port 3001)
+### 3. Verify the services
 
-✅ payment-service (Port 3002)
+```bash
+docker compose ps
+```
 
-✅ nginx (Port 8080)
+Expected services:
 
-✅ PostgreSQL databases
+- `auth-service` — port `3001`
+- `payment-service` — port `3002`
+- `nginx` — port `8080`
+- PostgreSQL databases
+- Redis
+- Grafana — port `3000`
+- Prometheus — port `9090`
 
-✅ Redis
+### View logs
 
-✅ Grafana (Port 3000)
+```bash
+# All services
+docker compose logs
 
-✅ Prometheus (Port 9090)
+# Follow all logs
+docker compose logs -f
 
-🔧 **API Testing**
+# Follow a specific service
+docker compose logs -f auth-service
+docker compose logs -f payment-service
+docker compose logs -f nginx
+```
 
-1. **User Registration & Security Tests**
-bash
-**Register a new user (strong password required)**
+### Stop the system
+
+```bash
+# Stop containers
+docker compose down
+
+# Stop containers and remove volumes
+docker compose down -v
+```
+
+## API Documentation
+
+- Auth Service Swagger UI: <http://localhost:3001/api>
+- Payment Service Swagger UI: <http://localhost:3002/api>
+
+### Authentication Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/auth/register` | Register a new user |
+| `POST` | `/auth/login` | Log in and receive a JWT |
+| `GET` | `/auth/validate` | Validate a token |
+| `GET` | `/auth/health` | Auth service health check |
+
+### Payment Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/payments` | Create a payment |
+| `GET` | `/payments/{reference}` | Get a payment by reference |
+| `PATCH` | `/payments/{reference}/status` | Update payment status |
+| `GET` | `/payments/health` | Payment service health check |
+
+## API Testing
+
+### Register a user
+
+```bash
 curl -X POST http://localhost:3001/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "phone_number": "+256700000001",
     "password": "SecurePass123!",
     "email": "test@opareta.com"
-  }
-  '
+  }'
+```
 
-**Expected Response** 
+Expected response:
 
-json
+```json
 {
   "user": {
     "phone_number": "+256700000001",
@@ -157,58 +178,65 @@ json
   },
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
-2. **User Login**
-bash
-**Login to get JWT**
+```
+
+### Log in
+
+```bash
 curl -X POST http://localhost:3001/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "phone_number": "+256700000001",
     "password": "SecurePass123!"
   }'
+```
 
-**❌ Password Validation (Security Feature)**
-  curl -X POST http://localhost:3001/auth/register \
+Use the returned JWT token for authenticated payment requests:
+
+```bash
+export JWT_TOKEN="YOUR_JWT_TOKEN"
+```
+
+### Test weak password validation
+
+```bash
+curl -X POST http://localhost:3001/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "phone_number": "+256700000001",
+    "phone_number": "+256700000002",
     "password": "password123",
-    "email": "test@opareta.com"
+    "email": "weak-password@opareta.com"
   }'
+```
 
-  **❌ Response:**
+Expected status: `400 Bad Request`
 
-json
+```json
 {
   "statusCode": 400,
   "message": ["Password too weak. Include upper, lower, number and special char."],
   "error": "Bad Request"
 }
+```
 
-**❌ Duplicate Prevention (Security Feature)**
-bash
-curl -X POST http://localhost:3001/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phone_number": "+256700000001",
-    "password": "SecurePass123!",
-    "email": "test@opareta.com"
-  }'
-**❌ Response:**
+### Test duplicate registration
 
-json
+Registering the same phone number or email again returns:
+
+```json
 {
   "statusCode": 409,
   "message": "User with this phone number or email already exists",
   "error": "Conflict"
 }
+```
 
-3. **Create Payment**
-bash
-**Create a new payment (replace TOKEN with actual JWT)**
+### Create a payment
+
+```bash
 curl -X POST http://localhost:3002/payments \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "reference": "TEST_001",
     "amount": 1000,
@@ -217,10 +245,11 @@ curl -X POST http://localhost:3002/payments \
     "customer_phone": "+256700000001",
     "customer_email": "test@opareta.com"
   }'
+```
 
-**Expected Response:**
+Expected response:
 
-json
+```json
 {
   "reference": "OP123456789ABC",
   "amount": 1000,
@@ -228,273 +257,143 @@ json
   "status": "INITIATED",
   "provider_name": "simulated"
 }
-4. **Get Payment Status**
-bash
-**Get payment by reference**
+```
+
+### Get payment status
+
+```bash
 curl -X GET http://localhost:3002/payments/OP123456789ABC \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer $JWT_TOKEN"
+```
 
-  **Response:**
+### Move a payment to pending
 
-json
-{
-  "id": "601c31a5-86e6-4c93-b65f-085183946f63",
-  "reference": "OP123456789ABC",
-  "amount": "2500.00",
-  "currency": "UGX",
-  "payment_method": "MOBILE_MONEY",
-  "customer_phone": "+256700000001",
-  "customer_email": "test@opareta.com",
-  "status": "SUCCESS",
-  "provider_transaction_id": "PROV1764332700508",
-  "provider_name": "simulated",
-  "created_at": "2025-11-28T12:24:48.131Z",
-  "updated_at": "2025-11-28T12:25:00.554Z"
-}
-
-5. **Update Payment Status (Webhook Simulation)**
-bash
-**Move payment to PENDING state(# Replace OP123456789 with actual reference from Step 2)**
+```bash
 curl -X PATCH http://localhost:3002/payments/OP123456789ABC/status \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "status": "PENDING",
     "provider_transaction_id": "MTN_123456",
     "reason": "Payment processing started"
   }'
+```
 
-**Complete payment (SUCCESS)-(Update Status to SUCCESS)**
+### Complete a payment
+
+```bash
 curl -X PATCH http://localhost:3002/payments/OP123456789ABC/status \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "status": "SUCCESS",
     "provider_transaction_id": "MTN_123456",
     "reason": "Payment completed successfully"
   }'
+```
 
-bash
-**Test password validation**
-curl -X POST /auth/register -d '{"password": "weak"}'
-**Expected: 400 - Password too weak**
+### Test unauthorized access
 
-**Test duplicate registration**
-curl -X POST /auth/register -d '{"phone_number": "+256700000001", ...}'
-**Expected: 409 - User already exists**
-
-**Test unauthorized access**
-curl -X POST /payments -H "Authorization: Bearer invalid_token" ...
- Expected: 401 - Unauthorized
-
-📊 **Database Operations**
-**Check Payments**
-bash
-docker-compose exec payment-db psql -U payment_user -d payment_service -c "
-SELECT reference, amount, status, created_at 
-FROM payments 
-ORDER BY created_at DESC 
-LIMIT 5;"
-**Check Audit Logs**
-bash
-docker-compose exec payment-db psql -U payment_user -d payment_service -c "
-SELECT payment_reference, from_status, to_status, reason, created_at 
-FROM payment_audit_log 
-ORDER BY created_at DESC 
-LIMIT 5;"
-
-**📊 Database Verification Commands**
-🧪 **Test Scenarios** 
-Valid State Transitions
-bash
-**Happy Path: INITIATED → PENDING → SUCCESS**
-curl -X PATCH /payments/{reference}/status -d '{"status": "PENDING", ...}'
-curl -X PATCH /payments/{reference}/status -d '{"status": "SUCCESS", ...}'
-**Failure Path: INITIATED → PENDING → FAILED**  
-curl -X PATCH /payments/{reference}/status -d '{"status": "PENDING", ...}'
-curl -X PATCH /payments/{reference}/status -d '{"status": "FAILED", ...}'
-Invalid State Transitions (Should Fail)
-bash
-**These will return 400 errors (as expected)**
-curl -X PATCH /payments/{reference}/status -d '{"status": "SUCCESS", ...}' # From INITIATED
-curl -X PATCH /payments/{reference}/status -d '{"status": "FAILED", ...}'  # From INITIATED
-curl -X PATCH /payments/{reference}/status -d '{"status": "SUCCESS", ...}' # From SUCCESS
-Security Tests
-
-**Check All Payments and (Test Scenarios From My Examples for Valid State Transitions )**
-bash
-docker-compose exec payment-db psql -U payment_user -d payment_service -c "SELECT reference, amount, status FROM payments ORDER BY created_at DESC LIMIT 5;"
-✅ Output:
-
-text
-   reference    | amount  |  status
-----------------+---------+-----------
- OP321460TOHXRH | 1000.00 | INITIATED
- OP829969IWMQLQ | 1000.00 | SUCCESS
- OP959679CFV8YM | 1000.00 | FAILED
- OP607806VOCO2A | 1000.00 | SUCCESS
- OP688119JJNFT0 | 2500.00 | SUCCESS
-(5 rows)
-
-**Check Audit Logs**
-bash
-docker-compose exec payment-db psql -U payment_user -d payment_service -c "SELECT payment_reference, from_status, to_status, reason, created_at FROM payment_audit_log ORDER BY created_at DESC LIMIT 5;"
-✅ Output:
-
-text
- payment_reference | from_status | to_status |                reason                |          created_at
--------------------+-------------+-----------+---------------------------------------+-------------------------------
- OP959679CFV8YM    | PENDING     | FAILED    | Payment failed - insufficient funds   | 2025-11-28 13:02:36.615314+00
- OP959679CFV8YM    | INITIATED   | PENDING   | Moving to pending state               | 2025-11-28 13:02:16.139145+00
- OP829969IWMQLQ    | PENDING     | SUCCESS   | Payment confirmed and completed       | 2025-11-28 12:58:43.456799+00
-(3 rows)
-
-**❌ Invalid State Transitions (Security Features)**
-
-**Invalid: INITIATED → SUCCESS (Direct)**
-bash
-curl -X PATCH http://localhost:3002/payments/OP445675S1KJPS/status \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+```bash
+curl -X POST http://localhost:3002/payments \
+  -H "Authorization: Bearer invalid_token" \
   -H "Content-Type: application/json" \
-  -d '{
-    "status": "SUCCESS",
-    "provider_transaction_id": "MTN_111222333",
-    "reason": "Payment completed successfully"
-  }'
-**❌ Response:**
+  -d '{"amount": 1000}'
+```
 
-json
-{
-  "statusCode": 400,
-  "message": "Invalid state transition from INITIATED to SUCCESS",
-  "error": "Bad Request"
-}
+Expected status: `401 Unauthorized`
 
-**Invalid: INITIATED → FAILED (Direct)**
-bash
-curl -X PATCH http://localhost:3002/payments/OP321460TOHXRH/status \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+## State Transition Rules
+
+Valid transitions:
+
+- `INITIATED → PENDING`
+- `PENDING → SUCCESS`
+- `PENDING → FAILED`
+
+Invalid transitions are rejected with `400 Bad Request`, including:
+
+- `INITIATED → SUCCESS`
+- `INITIATED → FAILED`
+- `SUCCESS → SUCCESS`
+- `FAILED → SUCCESS`
+
+Example failure path:
+
+```bash
+# Move to pending
+curl -X PATCH http://localhost:3002/payments/{reference}/status \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "status": "FAILED",
-    "provider_transaction_id": "MTN_000000",
-    "reason": "Transaction timeout"
-  }'
-**❌ Response:**
+  -d '{"status":"PENDING","reason":"Moving to pending state"}'
 
-json
-{
-  "statusCode": 400,
-  "message": "Invalid state transition from INITIATED to FAILED",
-  "error": "Bad Request"
-}
-**Invalid: SUCCESS → SUCCESS (Duplicate)**
-bash
-curl -X PATCH http://localhost:3002/payments/OP607806VOCO2A/status \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+# Mark as failed
+curl -X PATCH http://localhost:3002/payments/{reference}/status \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "status": "SUCCESS",
-    "provider_transaction_id": "MTN_123456789",
-    "reason": "Payment completed successfully"
-  }'
-**❌ Response:**
+  -d '{"status":"FAILED","reason":"Payment failed - insufficient funds"}'
+```
 
-json
-{
-  "statusCode": 400,
-  "message": "Invalid state transition from SUCCESS to SUCCESS",
-  "error": "Bad Request"
-}
+## Database Operations
 
-**Check Users**
-bash
-docker-compose exec auth-db psql -U auth_user -d auth_service -c "
-SELECT phone_number, email, created_at 
-FROM users;"
+### Check payments
 
-📖 **API Documentation**
-**Swagger UI**
-Auth Service: http://localhost:3001/api
-Payment Service: http://localhost:3002/api
+```bash
+docker compose exec payment-db psql -U payment_user -d payment_service -c "SELECT reference, amount, status, created_at FROM payments ORDER BY created_at DESC LIMIT 5;"
+```
 
-**Available Endpoints**
+### Check audit logs
 
-**Authentication Service**
-POST /auth/register - Register new user
-POST /auth/login - User login
-GET /auth/validate - Validate token
-GET /auth/health - Health check
-**Payment Service**
-POST /payments - Create payment
-GET /payments/{reference} - Get payment by reference
-PATCH /payments/{reference}/status - Update payment status
-GET /payments/health - Health check
+```bash
+docker compose exec payment-db psql -U payment_user -d payment_service -c "SELECT payment_reference, from_status, to_status, reason, created_at FROM payment_audit_log ORDER BY created_at DESC LIMIT 5;"
+```
 
-📈 **Monitoring**
+### Check users
 
-**Grafana Dashboard**
-URL: http://localhost:3000
-Credentials: admin/admin
-Features: Service health, request metrics, payment success rates
+```bash
+docker compose exec auth-db psql -U auth_user -d auth_service -c "SELECT phone_number, email, created_at FROM users;"
+```
 
-**Prometheus**
-URL: http://localhost:9090
-Features: Metrics collection and querying
+## Monitoring
 
-**🛠️ Run Development Tests**
+### Grafana
 
-**Run tests for auth service**
-docker-compose exec auth-service npm test
-**Run tests for payment service**  
-docker-compose exec payment-service npm test
-**Run tests with coverage**
-docker-compose exec auth-service npm run test:cov
-docker-compose exec payment-service npm run test:cov
+- URL: <http://localhost:3000>
+- Username: `admin`
+- Password: `admin`
+- Includes service health, request metrics, and payment success rates
 
-🔒 **Security Features**
-JWT-based authentication
-Strong password validation
-Input sanitization and validation
-SQL injection prevention
-Duplicate user prevention
-Secure state transitions
+### Prometheus
 
-🐛 **Troubleshooting(Common Issues)**
+- URL: <http://localhost:9090>
+- Used for metrics collection and querying
 
-# Port already in use
--Change ports in docker-compose.yml or stop conflicting services
-# Short version
-netstat -tulpn
-# Detailed version
-sudo netstat -tulpn
-# Alternative with lsof
-sudo lsof -i -P -n | grep LISTEN
-# Check what's using the port
-netstat -tulpn | grep :3001
-Or change ports in docker-compose.yml
+## Development and Testing
 
-  
-  **Database connection issues**
+```bash
+# Auth service tests
+docker compose exec auth-service npm test
 
-**Check if databases are running**
-docker-compose ps | grep db
-**Reset databases**
-docker-compose down -v && docker-compose up -d --build
-**JWT token issues**
-Ensure you're using the correct token from login response
-Check token expiration
-Verify Authorization header format: Bearer <token>
+# Payment service tests
+docker compose exec payment-service npm test
 
-## 🔄 Backup & Restore
+# Tests with coverage
+docker compose exec auth-service npm run test:cov
+docker compose exec payment-service npm run test:cov
+```
 
-### Automated Backups
+## Backup and Restore
+
+### Automated backups
+
 The system includes automated daily backups with 7-day retention.
 
-#### Windows:
+#### Windows
+
 ```powershell
-# Run setup (as Administrator)
 cd scripts\powershell
+
+# Setup scheduled backup (run as Administrator)
 .\setup-backup-task.ps1
 
 # Manual backup
@@ -502,8 +401,11 @@ cd scripts\powershell
 
 # Restore
 .\restore.ps1 "C:\opareta\backups\backup_20240115_020000.7z"
+```
 
-# Linux/Mac:
+#### Linux or macOS
+
+```bash
 # Setup cron job
 chmod +x scripts/linux/setup-cron.sh
 ./scripts/linux/setup-cron.sh
@@ -513,24 +415,70 @@ chmod +x scripts/linux/setup-cron.sh
 
 # Restore
 ./scripts/linux/restore.sh /opt/opareta/backups/backup_20240115_020000.tar.gz
+```
 
-# Manual Backup
-# Backup auth database
-docker exec opareta-payment-system_auth-db_1 pg_dump -U auth_user auth_db > auth_backup.sql
+### Manual database backup
 
-# Backup payment database
-docker exec opareta-payment-system_payment-db_1 pg_dump -U payment_user payment_db > payment_backup.sql
+```bash
+# Auth database
+docker exec opareta-payment-system-auth-db-1 pg_dump -U auth_user auth_db > auth_backup.sql
 
-## Restore
-bash
+# Payment database
+docker exec opareta-payment-system-payment-db-1 pg_dump -U payment_user payment_db > payment_backup.sql
+```
+
+### Manual database restore
+
+```bash
 # Restore auth database
-docker exec -i opareta-payment-system_auth-db_1 psql -U auth_user auth_db < auth_backup.sql
+docker exec -i opareta-payment-system-auth-db-1 psql -U auth_user auth_db < auth_backup.sql
 
 # Restore payment database
-docker exec -i opareta-payment-system_payment-db_1 psql -U payment_user payment_db < payment_backup.sql
-📞 **Support**
-For issues and questions:(mafabierico19@gmail.com)
-Check the troubleshooting section above
-Review service logs: docker-compose logs [service-name]
-Verify all services are running: docker-compose ps
+docker exec -i opareta-payment-system-payment-db-1 psql -U payment_user payment_db < payment_backup.sql
+```
 
+> Container names may differ based on the Compose project name. Run `docker compose ps` to confirm exact names.
+
+## Security
+
+- JWT-based authentication
+- Strong password validation
+- Input sanitization and validation
+- SQL injection prevention
+- Duplicate user prevention
+- Secure payment state transitions
+
+## Troubleshooting
+
+### Port already in use
+
+```bash
+netstat -tulpn | grep :3001
+sudo lsof -i -P -n | grep LISTEN
+```
+
+Change the conflicting port in `docker-compose.yml` or stop the process using it.
+
+### Database connection issues
+
+```bash
+# Check database containers
+docker compose ps | grep db
+
+# Reset databases and rebuild
+docker compose down -v
+docker compose up -d --build
+```
+
+### JWT token issues
+
+- Use the token returned by the login endpoint
+- Check that the token has not expired
+- Use the format `Authorization: Bearer <token>`
+
+## Support
+
+For support, contact <mafabierico19@gmail.com>.
+
+- Review logs: `docker compose logs [service-name]`
+- Verify running services: `docker compose ps`
